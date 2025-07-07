@@ -1,6 +1,7 @@
 package com.sky.interceptor;
 
 import com.sky.constant.JwtClaimsConstant;
+import com.sky.context.BaseContext;
 import com.sky.properties.JwtProperties;
 import com.sky.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
@@ -47,6 +48,10 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             Claims claims = JwtUtil.parseJWT(jwtProperties.getAdminSecretKey(), token);
             Long empId = Long.valueOf(claims.get(JwtClaimsConstant.EMP_ID).toString());
             log.info("当前员工id：{}", empId);
+
+            //将员工ID设置到BaseContext中，供后续使用
+            BaseContext.setCurrentId(empId);
+
             //3、通过，放行
             return true;
         } catch (Exception ex) {
@@ -54,5 +59,21 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             response.setStatus(401);
             return false;
         }
+    }
+
+    /**
+     * 在请求处理完成后清理ThreadLocal中的员工ID
+     *
+     * @param request
+     * @param response
+     * @param handler
+     * @param ex
+     * @throws Exception
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        // 清理当前线程的BaseContext中的员工ID，避免线程复用导致的数据污染
+        log.info("拦截器 afterCompletion 方法被调用，请求 URI：{}", request.getRequestURI());
+        BaseContext.removeCurrentId();
     }
 }
